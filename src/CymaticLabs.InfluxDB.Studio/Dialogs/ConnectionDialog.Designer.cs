@@ -41,6 +41,7 @@ namespace CymaticLabs.InfluxDB.Studio.Dialogs
             this.host = new System.Windows.Forms.TextBox();
             this.database = new System.Windows.Forms.TextBox();
             this.password = new System.Windows.Forms.TextBox();
+            this.showPassword = new System.Windows.Forms.CheckBox();
             this.username = new System.Windows.Forms.TextBox();
             this.name = new System.Windows.Forms.TextBox();
             this.label5 = new System.Windows.Forms.Label();
@@ -105,6 +106,7 @@ namespace CymaticLabs.InfluxDB.Studio.Dialogs
             this.panel1.Controls.Add(this.host);
             this.panel1.Controls.Add(this.database);
             this.panel1.Controls.Add(this.password);
+            this.panel1.Controls.Add(this.showPassword);
             this.panel1.Controls.Add(this.username);
             this.panel1.Controls.Add(this.name);
             this.panel1.Controls.Add(this.label5);
@@ -126,7 +128,7 @@ namespace CymaticLabs.InfluxDB.Studio.Dialogs
             this.securityToken.Location = new System.Drawing.Point(76, 267);
             this.securityToken.Name = "securityToken";
             this.securityToken.Size = new System.Drawing.Size(373, 20);
-            this.securityToken.TabIndex = 6;
+            this.securityToken.TabIndex = 7;
             this.securityToken.UseSystemPasswordChar = true;
             // 
             // tokenLabel
@@ -144,7 +146,7 @@ namespace CymaticLabs.InfluxDB.Studio.Dialogs
             this.useSsl.Location = new System.Drawing.Point(76, 307);
             this.useSsl.Name = "useSsl";
             this.useSsl.Size = new System.Drawing.Size(68, 17);
-            this.useSsl.TabIndex = 7;
+            this.useSsl.TabIndex = 8;
             this.useSsl.Text = "Use SSL";
             this.useSsl.UseVisualStyleBackColor = true;
             // 
@@ -227,9 +229,21 @@ namespace CymaticLabs.InfluxDB.Studio.Dialogs
             | System.Windows.Forms.AnchorStyles.Right)));
             this.password.Location = new System.Drawing.Point(76, 227);
             this.password.Name = "password";
-            this.password.Size = new System.Drawing.Size(373, 20);
+            this.password.Size = new System.Drawing.Size(248, 20);
             this.password.TabIndex = 5;
             this.password.UseSystemPasswordChar = true;
+            // 
+            // showPassword
+            // 
+            this.showPassword.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.showPassword.AutoSize = true;
+            this.showPassword.Location = new System.Drawing.Point(330, 229);
+            this.showPassword.Name = "showPassword";
+            this.showPassword.Size = new System.Drawing.Size(117, 17);
+            this.showPassword.TabIndex = 6;
+            this.showPassword.Text = "Passwort anzeigen";
+            this.showPassword.UseVisualStyleBackColor = true;
+            this.showPassword.CheckedChanged += new System.EventHandler(this.showPassword_CheckedChanged);
             // 
             // username
             // 
@@ -363,6 +377,7 @@ namespace CymaticLabs.InfluxDB.Studio.Dialogs
         private System.Windows.Forms.Label addressLabel;
         private System.Windows.Forms.Label nameLabel;
         private System.Windows.Forms.TextBox password;
+        private System.Windows.Forms.CheckBox showPassword;
         private System.Windows.Forms.TextBox username;
         private System.Windows.Forms.Label passwordLabel;
         private System.Windows.Forms.Label usernameLabel;

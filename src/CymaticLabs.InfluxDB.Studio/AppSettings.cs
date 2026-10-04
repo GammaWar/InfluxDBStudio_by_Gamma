@@ -44,6 +44,19 @@ namespace CymaticLabs.InfluxDB.Studio
         // Internal app date format setting
         string dateFormat;
 
+        /// <summary>
+        /// Comma CSV delimiter.
+        /// </summary>
+        public const string CsvDelimiterComma = ",";
+
+        /// <summary>
+        /// Semicolon CSV delimiter.
+        /// </summary>
+        public const string CsvDelimiterSemicolon = ";";
+
+        // Internal app CSV delimiter setting
+        string csvDelimiter;
+
         private static string cachedSettingsFilePath = null;
 
         #endregion Fields
@@ -127,6 +140,23 @@ namespace CymaticLabs.InfluxDB.Studio
         }
 
         /// <summary>
+        /// Gets or sets the CSV delimiter setting (e.g. "," or ";").
+        /// </summary>
+        public string CsvDelimiter
+        {
+            get { return csvDelimiter; }
+
+            set
+            {
+                if (csvDelimiter != value)
+                {
+                    csvDelimiter = value;
+                    SaveAll();
+                }
+            }
+        }
+
+        /// <summary>
         /// Gets or sets whether or not the application should allow untrusted SSL certificates
         /// when communicating to InfluxDB servers.
         /// </summary>
@@ -158,6 +188,7 @@ namespace CymaticLabs.InfluxDB.Studio
             // Initialize default settings
             timeFormat = TimeFormat12Hour;
             dateFormat = DateFormatMonth;
+            csvDelimiter = CsvDelimiterComma;
             allowUntrustedSsl = false;
             Connections = new List<InfluxDbConnection>();
 
@@ -219,6 +250,7 @@ namespace CymaticLabs.InfluxDB.Studio
                     Version = Version,
                     TimeFormat = TimeFormat,
                     DateFormat = DateFormat,
+                    CsvDelimiter = CsvDelimiter,
                     AllowUntrustedSsl = AllowUntrustedSsl,
                     Connections = encryptedList
                 };
@@ -268,6 +300,7 @@ namespace CymaticLabs.InfluxDB.Studio
                 var jObj = JObject.Parse(json);
                 if (jObj["TimeFormat"] != null) timeFormat = (string)jObj["TimeFormat"];
                 if (jObj["DateFormat"] != null) dateFormat = (string)jObj["DateFormat"];
+                if (jObj["CsvDelimiter"] != null) csvDelimiter = (string)jObj["CsvDelimiter"];
                 if (jObj["AllowUntrustedSsl"] != null) allowUntrustedSsl = (bool)jObj["AllowUntrustedSsl"];
 
                 Connections = new List<InfluxDbConnection>();

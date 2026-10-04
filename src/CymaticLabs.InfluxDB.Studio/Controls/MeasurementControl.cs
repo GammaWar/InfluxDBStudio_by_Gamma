@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
@@ -85,12 +85,15 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
                 using (var sw = new StreamWriter(saveFileDialog.FileName))
                 {
                     sb.Clear();
+                    var delimiter = (AppForm.Settings != null && !string.IsNullOrEmpty(AppForm.Settings.CsvDelimiter))
+                        ? AppForm.Settings.CsvDelimiter
+                        : ",";
                         
                     // Write the CSV column names (skip first column which is just row # label)
                     for (var i = 1; i < listView.Columns.Count; i++)
                     {
                         sb.Append(listView.Columns[i].Text);
-                        if (i < listView.Columns.Count - 1) sb.Append(",");
+                        if (i < listView.Columns.Count - 1) sb.Append(delimiter);
                     }
 
                     await sw.WriteLineAsync(sb.ToString());
@@ -107,7 +110,7 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
                         {
                             var sli = li.SubItems[i];
                             sb.Append(sli.Text);
-                            if (i < li.SubItems.Count - 1) sb.Append(",");
+                            if (i < li.SubItems.Count - 1) sb.Append(delimiter);
                         }
 
                         await sw.WriteLineAsync(sb.ToString());

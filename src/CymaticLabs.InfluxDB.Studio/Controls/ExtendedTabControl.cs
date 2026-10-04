@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
@@ -148,6 +148,22 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
 
             Rectangle r = GetTabRect(SelectedIndex);
             Rectangle closeButton = new Rectangle(r.Right - TabCloseWidth, r.Top + 4, 10, 10);
+
+            // Middle click, close the tab under cursor
+            if (e.Button == MouseButtons.Middle)
+            {
+                Point p = PointToClient(Cursor.Position);
+                for (int i = 0; i < TabCount; i++)
+                {
+                    r = GetTabRect(i);
+                    if (r.Contains(p))
+                    {
+                        CloseTab(TabPages[i]);
+                        break;
+                    }
+                }
+                return;
+            }
 
             // Left click, check for tab close
             if (e.Button == MouseButtons.Left && closeButton.Contains(e.Location))

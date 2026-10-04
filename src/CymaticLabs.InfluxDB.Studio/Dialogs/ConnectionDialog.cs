@@ -230,6 +230,12 @@ namespace CymaticLabs.InfluxDB.Studio.Dialogs
             }
         }
 
+        // Handles show password checkbox
+        private void showPassword_CheckedChanged(object sender, EventArgs e)
+        {
+            password.UseSystemPasswordChar = !showPassword.Checked;
+        }
+
         #endregion Event Handlers
 
         #region Methods
@@ -248,6 +254,8 @@ namespace CymaticLabs.InfluxDB.Studio.Dialogs
             Password = null;
             SecurityToken = null;
             UseSsl = false;
+            showPassword.Checked = false;
+            password.UseSystemPasswordChar = true;
         }
 
         /// <summary>
@@ -268,6 +276,8 @@ namespace CymaticLabs.InfluxDB.Studio.Dialogs
             Password = connection.Password;
             SecurityToken = connection.SecurityToken;
             UseSsl = connection.UseSsl;
+            showPassword.Checked = false;
+            password.UseSystemPasswordChar = true;
         }
 
         /// <summary>

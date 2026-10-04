@@ -1,4 +1,4 @@
-﻿namespace CymaticLabs.InfluxDB.Studio.Controls
+namespace CymaticLabs.InfluxDB.Studio.Controls
 {
     partial class QueryResultsControl
     {
@@ -47,6 +47,10 @@
             this.splitContainer.SuspendLayout();
             this.SuspendLayout();
             // 
+            this.copyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.selectAllToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripSeparatorCopy = new System.Windows.Forms.ToolStripSeparator();
+            // 
             // listView
             // 
             this.listView.Activation = System.Windows.Forms.ItemActivation.OneClick;
@@ -61,14 +65,39 @@
             this.listView.TabIndex = 0;
             this.listView.UseCompatibleStateImageBehavior = false;
             this.listView.View = System.Windows.Forms.View.Details;
+            this.listView.KeyDown += new System.Windows.Forms.KeyEventHandler(this.listView_KeyDown);
             // 
             // contextMenuStrip
             // 
             this.contextMenuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.copyToolStripMenuItem,
+            this.selectAllToolStripMenuItem,
+            this.toolStripSeparatorCopy,
             this.exportAllToolStripMenuItem,
             this.exportSelectedToolStripMenuItem});
             this.contextMenuStrip.Name = "contextMenuStrip";
             this.contextMenuStrip.Size = new System.Drawing.Size(155, 70);
+            // 
+            // copyToolStripMenuItem
+            // 
+            this.copyToolStripMenuItem.Name = "copyToolStripMenuItem";
+            this.copyToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.C)));
+            this.copyToolStripMenuItem.Size = new System.Drawing.Size(154, 22);
+            this.copyToolStripMenuItem.Text = "Copy";
+            this.copyToolStripMenuItem.Click += new System.EventHandler(this.copyToolStripMenuItem_Click);
+            // 
+            // selectAllToolStripMenuItem
+            // 
+            this.selectAllToolStripMenuItem.Name = "selectAllToolStripMenuItem";
+            this.selectAllToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.A)));
+            this.selectAllToolStripMenuItem.Size = new System.Drawing.Size(154, 22);
+            this.selectAllToolStripMenuItem.Text = "Select All";
+            this.selectAllToolStripMenuItem.Click += new System.EventHandler(this.selectAllToolStripMenuItem_Click);
+            // 
+            // toolStripSeparatorCopy
+            // 
+            this.toolStripSeparatorCopy.Name = "toolStripSeparatorCopy";
+            this.toolStripSeparatorCopy.Size = new System.Drawing.Size(151, 6);
             // 
             // exportAllToolStripMenuItem
             // 
@@ -167,6 +196,9 @@
         private System.Windows.Forms.TextBox tagsTextBox;
         private System.Windows.Forms.SaveFileDialog saveFileDialog;
         private System.Windows.Forms.ContextMenuStrip contextMenuStrip;
+        private System.Windows.Forms.ToolStripMenuItem copyToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem selectAllToolStripMenuItem;
+        private System.Windows.Forms.ToolStripSeparator toolStripSeparatorCopy;
         private System.Windows.Forms.ToolStripMenuItem exportAllToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem exportAllCsvToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem exportSelectedToolStripMenuItem;

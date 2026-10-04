@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
@@ -52,6 +52,19 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
             queryEditor.Styles[Style.Sql.String].ForeColor = Color.Red;
             queryEditor.Styles[Style.Sql.Number].ForeColor = Color.Magenta;
             queryEditor.Styles[Style.Sql.QuotedIdentifier].ForeColor = Color.Red;
+
+            // Handle query editor shortcuts (F5 and Ctrl+Enter)
+            queryEditor.KeyDown += QueryEditor_KeyDown;
+        }
+
+        private async void QueryEditor_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.F5 || (e.Control && e.KeyCode == Keys.Enter))
+            {
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                await ExecuteRequestAsync();
+            }
         }
 
         #endregion Constructors

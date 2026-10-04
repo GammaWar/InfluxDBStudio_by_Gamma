@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -231,6 +231,12 @@ namespace CymaticLabs.InfluxDB.Studio
             Settings.DateFormat = dateFormatComboBox.SelectedIndex == 0 ? AppSettings.DateFormatMonth : AppSettings.DateFormatDay;
         }
 
+        // Handles Settings -> CSV Delimiter -> change of delimiter
+        private void csvDelimiterComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            Settings.CsvDelimiter = csvDelimiterComboBox.SelectedIndex == 1 ? AppSettings.CsvDelimiterSemicolon : AppSettings.CsvDelimiterComma;
+        }
+
         #endregion Settings
 
         #region Help
@@ -457,6 +463,30 @@ namespace CymaticLabs.InfluxDB.Studio
             var node = e.Node;
             if (GetNodeType(node) != InfluxDbNodeTypes.Measurement) return;
             NewQuery(node);
+        }
+
+        // Handle Delete key on tree view
+        private async void connectionsTreeView_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Delete)
+            {
+                var node = connectionsTreeView.SelectedNode;
+                if (node == null) return;
+
+                var nodeType = GetNodeType(node);
+                if (nodeType == InfluxDbNodeTypes.Database)
+                {
+                    e.Handled = true;
+                    e.SuppressKeyPress = true;
+                    await DropDatabase(node);
+                }
+                else if (nodeType == InfluxDbNodeTypes.Measurement)
+                {
+                    e.Handled = true;
+                    e.SuppressKeyPress = true;
+                    await DropMeasurement(node);
+                }
+            }
         }
 
         // Handle tree node expansion
@@ -1558,6 +1588,23 @@ namespace CymaticLabs.InfluxDB.Studio
             }
         }
 
+        /// <summary>
+        /// Intercepts command keys to support shortcuts (e.g. F5, Ctrl+Enter) globally across focused controls.
+        /// </summary>
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == Keys.F5 || keyData == (Keys.Control | Keys.Enter))
+            {
+                if (CanRunQuery())
+                {
+                    _ = ExecuteCurrentRequest();
+                    return true;
+                }
+            }
+
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
+
         #endregion Queries/Requests
 
         #endregion Commands
@@ -1589,6 +1636,16 @@ namespace CymaticLabs.InfluxDB.Studio
             {
                 // day-first
                 dateFormatComboBox.SelectedIndex = 1;
+            }
+
+            // Set CSV delimiter
+            if (Settings.CsvDelimiter == AppSettings.CsvDelimiterSemicolon)
+            {
+                csvDelimiterComboBox.SelectedIndex = 1;
+            }
+            else
+            {
+                csvDelimiterComboBox.SelectedIndex = 0;
             }
 
             // Apply untrusted SSL

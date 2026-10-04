@@ -1,4 +1,4 @@
-﻿namespace CymaticLabs.InfluxDB.Studio
+namespace CymaticLabs.InfluxDB.Studio
 {
     partial class AppForm
     {
@@ -54,6 +54,8 @@
             this.timeFormatComboBox = new System.Windows.Forms.ToolStripComboBox();
             this.dateFormatToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.dateFormatComboBox = new System.Windows.Forms.ToolStripComboBox();
+            this.csvDelimiterToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.csvDelimiterComboBox = new System.Windows.Forms.ToolStripComboBox();
             this.allowUntrustedSSLToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.helpToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -255,6 +257,7 @@
             this.settingsToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.timeFormatToolStripMenuItem,
             this.dateFormatToolStripMenuItem,
+            this.csvDelimiterToolStripMenuItem,
             this.allowUntrustedSSLToolStripMenuItem});
             this.settingsToolStripMenuItem.Name = "settingsToolStripMenuItem";
             this.settingsToolStripMenuItem.Size = new System.Drawing.Size(61, 20);
@@ -299,6 +302,25 @@
             this.dateFormatComboBox.Name = "dateFormatComboBox";
             this.dateFormatComboBox.Size = new System.Drawing.Size(160, 23);
             this.dateFormatComboBox.SelectedIndexChanged += new System.EventHandler(this.dateFormatComboBox_SelectedIndexChanged);
+            // 
+            // csvDelimiterToolStripMenuItem
+            // 
+            this.csvDelimiterToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.csvDelimiterComboBox});
+            this.csvDelimiterToolStripMenuItem.Name = "csvDelimiterToolStripMenuItem";
+            this.csvDelimiterToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.csvDelimiterToolStripMenuItem.Text = "CSV Delimiter";
+            // 
+            // csvDelimiterComboBox
+            // 
+            this.csvDelimiterComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.csvDelimiterComboBox.FlatStyle = System.Windows.Forms.FlatStyle.Standard;
+            this.csvDelimiterComboBox.Items.AddRange(new object[] {
+            ", (Comma)",
+            "; (Semicolon)"});
+            this.csvDelimiterComboBox.Name = "csvDelimiterComboBox";
+            this.csvDelimiterComboBox.Size = new System.Drawing.Size(136, 23);
+            this.csvDelimiterComboBox.SelectedIndexChanged += new System.EventHandler(this.csvDelimiterComboBox_SelectedIndexChanged);
             // 
             // allowUntrustedSSLToolStripMenuItem
             // 
@@ -657,6 +679,7 @@
             this.connectionsTreeView.AfterSelect += new System.Windows.Forms.TreeViewEventHandler(this.connectionsTreeView_AfterSelect);
             this.connectionsTreeView.NodeMouseClick += new System.Windows.Forms.TreeNodeMouseClickEventHandler(this.connectionsTreeView_NodeMouseClick);
             this.connectionsTreeView.NodeMouseDoubleClick += new System.Windows.Forms.TreeNodeMouseClickEventHandler(this.connectionsTreeView_NodeMouseDoubleClick);
+            this.connectionsTreeView.KeyDown += new System.Windows.Forms.KeyEventHandler(this.connectionsTreeView_KeyDown);
             // 
             // tabControl
             // 
@@ -1017,6 +1040,8 @@
         private System.Windows.Forms.ToolStripComboBox timeFormatComboBox;
         private System.Windows.Forms.ToolStripMenuItem dateFormatToolStripMenuItem;
         private System.Windows.Forms.ToolStripComboBox dateFormatComboBox;
+        private System.Windows.Forms.ToolStripMenuItem csvDelimiterToolStripMenuItem;
+        private System.Windows.Forms.ToolStripComboBox csvDelimiterComboBox;
         private System.Windows.Forms.ToolStripMenuItem allowUntrustedSSLToolStripMenuItem;
         private System.Windows.Forms.ToolStripButton showQueriesButton;
         private System.Windows.Forms.ToolStripMenuItem showQueriesToolStripMenuItem;

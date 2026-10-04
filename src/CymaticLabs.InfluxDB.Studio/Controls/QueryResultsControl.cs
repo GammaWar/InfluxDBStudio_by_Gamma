@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
@@ -72,6 +72,35 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
         private void jSONToolStripMenuItem1_Click(object sender, EventArgs e)
         {
             ExportToJson(true);
+        }
+
+        // Copy selected items to clipboard
+        private void copyToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            CopySelectionToClipboard();
+        }
+
+        // Select all items
+        private void selectAllToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SelectAllItems();
+        }
+
+        // Key down handling on listView (Ctrl+C, Ctrl+A)
+        private void listView_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Control && e.KeyCode == Keys.C)
+            {
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                CopySelectionToClipboard();
+            }
+            else if (e.Control && e.KeyCode == Keys.A)
+            {
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                SelectAllItems();
+            }
         }
 
         #endregion Event Handlers
@@ -195,12 +224,15 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
                     using (var sw = new StreamWriter(saveFileDialog.FileName))
                     {
                         sb.Clear();
+                        var delimiter = (AppForm.Settings != null && !string.IsNullOrEmpty(AppForm.Settings.CsvDelimiter))
+                            ? AppForm.Settings.CsvDelimiter
+                            : ",";
 
                         // Write the CSV column names (skip first column which is just row # label)
                         for (var i = 1; i < listView.Columns.Count; i++)
                         {
                             sb.Append(listView.Columns[i].Text);
-                            if (i < listView.Columns.Count - 1) sb.Append(",");
+                            if (i < listView.Columns.Count - 1) sb.Append(delimiter);
                         }
 
                         await sw.WriteLineAsync(sb.ToString());
@@ -217,7 +249,7 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
                             {
                                 var sli = li.SubItems[i];
                                 sb.Append(sli.Text);
-                                if (i < li.SubItems.Count - 1) sb.Append(",");
+                                if (i < li.SubItems.Count - 1) sb.Append(delimiter);
                             }
 
                             await sw.WriteLineAsync(sb.ToString());
@@ -295,6 +327,68 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
                     // Write to disk
                     File.WriteAllText(saveFileDialog.FileName, json);
                 }
+            }
+            catch (Exception ex)
+            {
+                AppForm.DisplayException(ex);
+            }
+        }
+
+        // Copies selected ListView rows to the clipboard as tab-separated values
+        private void CopySelectionToClipboard()
+        {
+            try
+            {
+                if (listView.Items.Count == 0) return;
+
+                var sb = new StringBuilder();
+
+                // If nothing is selected, copy all items; otherwise copy selected
+                var hasSelection = listView.SelectedIndices.Count > 0;
+
+                // Write header (columns starting from index 1 to skip row index column #)
+                for (var i = 1; i < listView.Columns.Count; i++)
+                {
+                    sb.Append(listView.Columns[i].Text);
+                    if (i < listView.Columns.Count - 1) sb.Append("\t");
+                }
+                sb.AppendLine();
+
+                // Write rows
+                foreach (ListViewItem li in listView.Items)
+                {
+                    if (hasSelection && !li.Selected) continue;
+
+                    for (var i = 1; i < li.SubItems.Count; i++)
+                    {
+                        sb.Append(li.SubItems[i].Text);
+                        if (i < li.SubItems.Count - 1) sb.Append("\t");
+                    }
+                    sb.AppendLine();
+                }
+
+                if (sb.Length > 0)
+                {
+                    Clipboard.SetDataObject(sb.ToString(), true);
+                }
+            }
+            catch (Exception ex)
+            {
+                AppForm.DisplayException(ex);
+            }
+        }
+
+        // Selects all items in the ListView
+        private void SelectAllItems()
+        {
+            try
+            {
+                listView.BeginUpdate();
+                foreach (ListViewItem li in listView.Items)
+                {
+                    li.Selected = true;
+                }
+                listView.EndUpdate();
             }
             catch (Exception ex)
             {
