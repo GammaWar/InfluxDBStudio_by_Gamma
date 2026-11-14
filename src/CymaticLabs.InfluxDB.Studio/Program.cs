@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -14,8 +14,16 @@ namespace CymaticLabs.InfluxDB.Studio
         [STAThread]
         static void Main()
         {
+            Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+
+            Application.ThreadException += (s, e) => AppForm.DisplayException(e.Exception);
+            AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+            {
+                if (e.ExceptionObject is Exception ex) AppForm.DisplayException(ex);
+            };
+
             Application.Run(new AppForm());
         }
     }

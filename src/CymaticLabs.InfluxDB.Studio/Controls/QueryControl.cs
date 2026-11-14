@@ -69,49 +69,65 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
             resultsCount = 0;
 
             // Get the database and the query
-            var query = EditorText.Trim();
+            var query = EditorText?.Trim();
+            if (string.IsNullOrWhiteSpace(query)) return;
+
             bool isAggregate = query.ToLower().Contains("group by");
 
-            // Clear the current results
-            tabControl.Controls.Clear();
+            // Clear and dispose current results
+            ClearResultTabs();
 
             // Start timing...
             stopWatch.Restart();
 
-            // Execute the query
-            var results = await InfluxDbClient.QueryAsync(Database, query);
-
-            // Stop timing...
-            stopWatch.Stop();
-
-            // If there are results
-            if (results != null && results.Count() > 0)
+            try
             {
-                var tabCount = 0;
-                var tabLabel = isAggregate ? "Group" : "Results";
+                // Execute the query
+                var results = await InfluxDbClient.QueryAsync(Database, query);
 
-                foreach (var result in results)
+                // If there are results
+                if (results != null && results.Count() > 0)
                 {
-                    // Create a new tab page to hold the query results control
-                    var tab = new TabPage(string.Format("{0} {1}", tabLabel, ++tabCount));
+                    var tabCount = 0;
+                    var tabLabel = isAggregate ? "Group" : "Results";
 
-                    // Create a new query results control
-                    var queryResultsControl = new QueryResultsControl();
-                    queryResultsControl.InfluxDbClient = InfluxDbClient;
-                    queryResultsControl.Database = Database;
-                    queryResultsControl.Dock = DockStyle.Fill;
-                    tab.Controls.Add(queryResultsControl);
+                    foreach (var result in results)
+                    {
+                        // Create a new tab page to hold the query results control
+                        var tab = new TabPage(string.Format("{0} {1}", tabLabel, ++tabCount));
 
-                    // Add the tab to the control
-                    tabControl.TabPages.Add(tab);
+                        // Create a new query results control
+                        var queryResultsControl = new QueryResultsControl();
+                        queryResultsControl.InfluxDbClient = InfluxDbClient;
+                        queryResultsControl.Database = Database;
+                        queryResultsControl.Dock = DockStyle.Fill;
+                        tab.Controls.Add(queryResultsControl);
 
-                    // Render the results and increment the global total
-                    resultsCount += queryResultsControl.UpdateResults(result);
+                        // Add the tab to the control
+                        tabControl.TabPages.Add(tab);
+
+                        // Render the results and increment the global total
+                        resultsCount += queryResultsControl.UpdateResults(result);
+                    }
                 }
+            }
+            finally
+            {
+                stopWatch.Stop();
             }
 
             // Show stat results of query
             resultsLabel.Text = string.Format("results: {0}, response time: {1:0} ms", resultsCount, stopWatch.Elapsed.TotalMilliseconds);
+        }
+
+        private void ClearResultTabs()
+        {
+            while (tabControl.TabPages.Count > 0)
+            {
+                var tab = tabControl.TabPages[0];
+                tabControl.TabPages.RemoveAt(0);
+                tab.Dispose();
+            }
         }
 
         #endregion Methods

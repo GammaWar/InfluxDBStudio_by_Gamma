@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -12,12 +12,13 @@ namespace CymaticLabs.InfluxDB.Data
     /// <summary>
     /// InfluxData.NET implementation.
     /// </summary>
-    public class InfluxDataNetClient : InfluxDbClient
+    public class InfluxDataNetClient : InfluxDbClient, IDisposable
     {
         #region Fields
 
         // The underlying InfluxData.NET client connection
         private InfluxData.Net.InfluxDb.InfluxDbClient influx;
+        private System.Net.Http.HttpClient httpClient;
 
         #endregion Fields
 
@@ -37,8 +38,23 @@ namespace CymaticLabs.InfluxDB.Data
             // Create the underlying concrete client
             var c = connection;
 
+            var handler = SslIgnoreValidator.CreateHttpClientHandler();
+            httpClient = new System.Net.Http.HttpClient(handler, disposeHandler: true);
+
+            // Add Token-based authorization header if specified (InfluxDB 2.x/3.x token support)
+            if (!string.IsNullOrWhiteSpace(c.SecurityToken))
+            {
+                httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Token", c.SecurityToken);
+            }
+
             influx = new InfluxData.Net.InfluxDb.InfluxDbClient(c.HttpConnectionString, 
-                c.Username, c.Password, InfluxDbVersion.Latest);
+                c.Username, c.Password, InfluxDbVersion.Latest, QueryLocation.FormData, httpClient);
+        }
+
+        public void Dispose()
+        {
+            httpClient?.Dispose();
+            httpClient = null;
         }
 
         #endregion Constructors
@@ -129,7 +145,7 @@ namespace CymaticLabs.InfluxDB.Data
             // If the default was supplied, run a second query to alter and add the default status since InfluxData.NET doesn't allow for the default argument
             if (response != null && response.Success && isDefault)
             {
-                var alterResponse = await influx.Client.QueryAsync(string.Format("ALTER RETENTION POLICY \"{0}\" ON \"{1}\" DEFAULT",database, policyName, database)).ConfigureAwait(false);
+                var alterResponse = await influx.Client.QueryAsync(string.Format("ALTER RETENTION POLICY \"{0}\" ON \"{1}\" DEFAULT", policyName, database)).ConfigureAwait(false);
             }
 
             return new InfluxDbApiResponse(response.Body, response.StatusCode, response.Success);
@@ -157,7 +173,7 @@ namespace CymaticLabs.InfluxDB.Data
             // If the default was supplied, run a second query to alter and add the default status since InfluxData.NET doesn't allow for the default argument
             if (response != null && response.Success && isDefault)
             {
-                var alterResponse = await influx.Client.QueryAsync(string.Format("ALTER RETENTION POLICY \"{0}\" ON \"{1}\" DEFAULT",database, policyName, database)).ConfigureAwait(false);
+                var alterResponse = await influx.Client.QueryAsync(string.Format("ALTER RETENTION POLICY \"{0}\" ON \"{1}\" DEFAULT", policyName, database)).ConfigureAwait(false);
             }
 
             return new InfluxDbApiResponse(response.Body, response.StatusCode, response.Success);
@@ -311,7 +327,9 @@ namespace CymaticLabs.InfluxDB.Data
 
             foreach (var r in results)
             {
-                queries.Add(new InfluxDbRunningQuery(int.Parse(r[0].ToString()), r[2] as string, r[3] as string, r[1] as string));
+                if (r == null || r.Count < 4) continue;
+                int.TryParse(r[0]?.ToString(), out var pid);
+                queries.Add(new InfluxDbRunningQuery(pid, r[2] as string, r[3] as string, r[1] as string));
             }
 
             return queries;

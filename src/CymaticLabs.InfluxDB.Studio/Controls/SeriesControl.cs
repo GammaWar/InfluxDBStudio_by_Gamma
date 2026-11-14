@@ -57,7 +57,7 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
 
                 foreach (var pair in parsedSeries)
                 {
-                    var parsedPair = pair.Split(new char[] { '=' }, StringSplitOptions.RemoveEmptyEntries);
+                    var parsedPair = pair.Split(new char[] { '=' }, 2, StringSplitOptions.RemoveEmptyEntries);
                     var name = parsedPair[0];
                     if (name == Measurement || parsedPair.Length == 1) continue; // ignore measurement name
                     var value = parsedPair[1];
@@ -72,7 +72,7 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
                     }
 
                     // Add this value pair to the series entry
-                    values.Add(name, value);
+                    values[name] = value;
                 }
             }
 

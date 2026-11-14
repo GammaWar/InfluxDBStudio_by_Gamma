@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows.Forms;
 using CymaticLabs.InfluxDB.Data;
 
@@ -10,8 +10,6 @@ namespace CymaticLabs.InfluxDB.Studio.Dialogs
     public partial class EditPrivilegeDialog : Form
     {
         #region Fields
-
-        InfluxDbGrant grant;
 
         #endregion Fields
 

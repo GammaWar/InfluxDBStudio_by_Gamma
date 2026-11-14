@@ -450,6 +450,8 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
 
         public async override Task ExecuteRequestAsync()
         {
+            var previousSelectedUser = SelectedUser;
+
             usersListView.BeginUpdate();
             usersListView.Items.Clear();
 
@@ -469,13 +471,11 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
             }
 
             // Restore any previous selection
-            var selectedUser = SelectedUser;
-
-            if (selectedUser != null)
+            if (previousSelectedUser != null)
             {
                 foreach (ListViewItem li in usersListView.Items)
                 {
-                    if (li.Text == selectedUser.Name)
+                    if (li.Text == previousSelectedUser.Name)
                     {
                         li.Selected = true;
                         break;
@@ -556,11 +556,11 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
 
             // Grants/Privileges
             var grant = SelectedPrivilegeGrant;
-            grantPrivilegeButton.Enabled = user != null;
-            editPrivilegeButton.Enabled = grant != null;
+            grantPrivilegeButton.Enabled = user != null && !user.IsAdmin;
+            editPrivilegeButton.Enabled = user != null && !user.IsAdmin && grant != null;
 
-            grantPrivilegeToolStripMenuItem.Enabled = user != null;
-            editPrivilegeToolStripMenuItem.Enabled = grant != null;
+            grantPrivilegeToolStripMenuItem.Enabled = user != null && !user.IsAdmin;
+            editPrivilegeToolStripMenuItem.Enabled = user != null && !user.IsAdmin && grant != null;
         }
 
         #endregion User Interface

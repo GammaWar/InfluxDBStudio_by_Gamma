@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text.RegularExpressions;
 
 namespace CymaticLabs.InfluxDB.Data
@@ -28,9 +28,9 @@ namespace CymaticLabs.InfluxDB.Data
         public const string MicrosecondsUnit = "u";
 
         /// <summary>
-        /// Regex used to validate time interval strings: 1h, 15m, 30s, etc.
+        /// Regex used to validate time interval strings: 1h, 15m, 30s, 500ms, 100ns, etc.
         /// </summary>
-        public static readonly Regex IntervalRegex = new Regex("([0-9\\.]+)(.)");
+        public static readonly Regex IntervalRegex = new Regex(@"^([0-9]+(?:\.[0-9]+)?)([a-zA-Zµ]+)$");
 
         #endregion Fields
 
@@ -46,50 +46,55 @@ namespace CymaticLabs.InfluxDB.Data
 
         /// <summary>
         /// Determine whether or not an InfluxDB time interval string is valid:
-        /// "1h", "30m", "15s", etc.
+        /// "1h", "30m", "15s", "500ms", "100ns", etc.
         /// </summary>
         /// <param name="timeInterval">The time interval string to validate.</param>
+        /// <param name="allowInfinite">Whether to allow infinite/zero retention policy durations such as "INF", "0", or "0s".</param>
         /// <returns>True if the string is a valid time interval, False if not.</returns>
-        public static bool IsTimeIntervalValid(string timeInterval)
+        public static bool IsTimeIntervalValid(string timeInterval, bool allowInfinite = false)
         {
             // Null string
             if (string.IsNullOrWhiteSpace(timeInterval)) return false;
 
-            // Make sure the leading character is a number
-            var fc = timeInterval[0];
+            timeInterval = timeInterval.Trim();
 
-            if (fc != '0' && fc != '1' && fc != '2' && fc != '3' && fc != '4' && fc != '5' && fc != '6' && fc != '7' && fc != '8' && fc != '9')
-                return false;
-
-            // Make sure the last character is a valid time unit character
-            var lc = timeInterval[timeInterval.Length - 1];
-
-            if (lc != 's' && lc != 'u' && lc != 'm' && lc != 'h' && lc != 'd' && lc != 'w')
-                return false;
+            if (allowInfinite && (string.Equals(timeInterval, "INF", StringComparison.OrdinalIgnoreCase) || timeInterval == "0"))
+                return true;
 
             // Otherwise parse with regex
-            var matches = IntervalRegex.Match(timeInterval);
-
-            // We should have just one match
-            if (matches.Captures.Count != 1) return false;
-
-            // We should have 3 groups: combined match, value match, units match ("10m", "10", "m")
-            if (matches.Groups.Count != 3) return false;
+            var match = IntervalRegex.Match(timeInterval);
+            if (!match.Success || match.Groups.Count != 3) return false;
 
             // Validate numeric value
-            var rawValue = matches.Groups[1].Value;
+            var rawValue = match.Groups[1].Value;
+            double value;
+            if (!double.TryParse(rawValue, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out value))
+                return false;
 
-            // Attempt to parse the value
-            uint value;
-            if (!uint.TryParse(rawValue, out value)) return false;
+            if (allowInfinite ? value < 0 : value <= 0) return false;
 
             // Validate units
-            var units = matches.Groups[2].Value;
+            var units = match.Groups[2].Value;
             return ConvertTimeUnit(units) != InfluxDbTimeUnits.None;
         }
 
         /// <summary>
-        /// Converts a string time unit ("s", "m", "h", "d", etc.) into a <see cref="InfluxDbTimeUnits"/> value.
+        /// Escapes a field value according to RFC 4180 for CSV export.
+        /// </summary>
+        public static string EscapeCsvField(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return string.Empty;
+
+            if (value.IndexOfAny(new[] { ',', '"', '\r', '\n' }) >= 0)
+            {
+                return "\"" + value.Replace("\"", "\"\"") + "\"";
+            }
+
+            return value;
+        }
+
+        /// <summary>
+        /// Converts a string time unit ("ns", "u", "ms", "s", "m", "h", "d", "w", etc.) into a <see cref="InfluxDbTimeUnits"/> value.
         /// </summary>
         /// <param name="unit">The string unit to convert.</param>
         /// <param name="throwIfInvalid">Whether or not the method will throw an exception if an invalid unit value is provided.</param>
@@ -99,9 +104,14 @@ namespace CymaticLabs.InfluxDB.Data
         {
             if (string.IsNullOrWhiteSpace(unit)) throw new ArgumentNullException("unit");
 
-            switch (unit.ToLower())
+            switch (unit.ToLowerInvariant())
             {
+                case "ns":
+                    return InfluxDbTimeUnits.Nanoseconds;
+
                 case "u":
+                case "µ":
+                case "µs":
                     return InfluxDbTimeUnits.Microseconds;
 
                 case "ms":
@@ -140,6 +150,9 @@ namespace CymaticLabs.InfluxDB.Data
         {
             switch (unit)
             {
+                case InfluxDbTimeUnits.Nanoseconds:
+                    return "ns";
+
                 case InfluxDbTimeUnits.Days:
                     return "d";
 

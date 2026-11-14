@@ -12,6 +12,9 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
     {
         #region Fields
 
+        bool isPopulatingTags;
+        int bindVersion;
+
         #endregion Fields
 
         #region Properties
@@ -37,6 +40,7 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
         // Handle changes to tag key
         private async void tagKeysComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (isPopulatingTags) return;
             await ExecuteRequestAsync();
         }
 
@@ -54,8 +58,18 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
 
                 if (tagKeys != null && tagKeys.Count() > 0)
                 {
-                    foreach (var tag in tagKeys) tagKeysComboBox.Items.Add(tag);
-                    tagKeysComboBox.SelectedItem = tagKeys.First();
+                    isPopulatingTags = true;
+                    try
+                    {
+                        foreach (var tag in tagKeys) tagKeysComboBox.Items.Add(tag);
+                        tagKeysComboBox.SelectedItem = tagKeys.First();
+                    }
+                    finally
+                    {
+                        isPopulatingTags = false;
+                    }
+
+                    await BindTagValues();
                 }
             }
             else
@@ -67,29 +81,31 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
         // Queries tag values for the selected tag key and displays them
         async Task BindTagValues()
         {
-            // Clear the current items
-            listView.Items.Clear();
+            var currentVersion = ++bindVersion;
 
             // Get the values for the current tag key
             var selectedTag = tagKeysComboBox.SelectedItem as string;
+            if (selectedTag == null) return;
 
-            if (selectedTag != null)
+            var tagValues = await InfluxDbClient.GetTagValuesAsync(Database, Measurement, selectedTag);
+            if (currentVersion != bindVersion) return;
+
+            // Clear current items and columns right before populating
+            listView.Items.Clear();
+            listView.Columns.Clear();
+
+            // Add default row count column
+            listView.Columns.Add(new ColumnHeader() { Text = "#" });
+
+            // Add tag value column
+            listView.Columns.Add(new ColumnHeader() { Text = "tagValue" });
+
+            // Add each value to the list
+            var rowCount = 0;
+
+            foreach (var tv in tagValues)
             {
-                var tagValues = await InfluxDbClient.GetTagValuesAsync(Database, Measurement, selectedTag);
-
-                // Add default row count column
-                listView.Columns.Add(new ColumnHeader() { Text = "#" });
-
-                // Add tag value column
-                listView.Columns.Add(new ColumnHeader() { Text = "tagValue" });
-
-                // Add each value to the list
-                var rowCount = 0;
-
-                foreach (var tv in tagValues)
-                {
-                    listView.Items.Add(new ListViewItem(new string[] { (++rowCount).ToString(), tv.Value }) { Tag = tv });
-                }
+                listView.Items.Add(new ListViewItem(new string[] { (++rowCount).ToString(), tv.Value }) { Tag = tv });
             }
         }
 

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO;
 using Newtonsoft.Json;
+using CymaticLabs.InfluxDB.Data;
 
 namespace CymaticLabs.InfluxDB.Studio.Controls
 {
@@ -89,7 +90,7 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
                     // Write the CSV column names (skip first column which is just row # label)
                     for (var i = 1; i < listView.Columns.Count; i++)
                     {
-                        sb.Append(listView.Columns[i].Text);
+                        sb.Append(InfluxDbHelper.EscapeCsvField(listView.Columns[i].Text));
                         if (i < listView.Columns.Count - 1) sb.Append(",");
                     }
 
@@ -106,7 +107,7 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
                         for (var i = 1; i < li.SubItems.Count; i++)
                         {
                             var sli = li.SubItems[i];
-                            sb.Append(sli.Text);
+                            sb.Append(InfluxDbHelper.EscapeCsvField(sli.Text));
                             if (i < li.SubItems.Count - 1) sb.Append(",");
                         }
 

@@ -20,6 +20,34 @@ namespace CymaticLabs.InfluxDB.Data
         /// </summary>
         public InfluxDbConnection Connection { get; private set; }
 
+        /// <summary>
+        /// Gets the InfluxDB API generation implemented by this client.
+        /// </summary>
+        public virtual InfluxDbApiVersion ApiVersion => InfluxDbApiVersion.V1;
+
+        public virtual bool SupportsCreateDatabase => true;
+        public virtual bool SupportsDropDatabase => true;
+        public virtual bool SupportsRetentionPolicies => true;
+        public virtual bool SupportsCreateRetentionPolicy => true;
+        public virtual bool SupportsContinuousQueries => true;
+        public virtual bool SupportsBackfill => true;
+        public virtual bool SupportsUsers => true;
+        public virtual bool SupportsRunningQueries => true;
+        public virtual bool SupportsDiagnostics => true;
+        public virtual bool SupportsStats => true;
+        public virtual bool SupportsSeriesDiscovery => true;
+        public virtual bool SupportsDropSeries => true;
+        public virtual bool SupportsDropMeasurement => true;
+
+        /// <summary>
+        /// Returns an idiomatic default query for the target database/measurement on this client's API version.
+        /// </summary>
+        public virtual string GetDefaultQuery(string database, string measurement)
+        {
+            var m = string.IsNullOrWhiteSpace(measurement) ? "measurement" : measurement;
+            return string.Format("SELECT * FROM \"{0}\" WHERE time > now() - 5m", m);
+        }
+
         #endregion Properties
 
         #region Constructors

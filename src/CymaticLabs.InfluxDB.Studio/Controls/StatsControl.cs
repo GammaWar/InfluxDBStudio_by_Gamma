@@ -67,11 +67,12 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
             // Clear list items
             statsComboBox.Items.Clear();
 
-            // Clear the current results
-            tabControl.Controls.Clear();
+            // Clear and dispose current results
+            ClearResultTabs();
 
             // Execute the query
             CurrentStatistics = await InfluxDbClient.GetStatsAsync();
+            if (CurrentStatistics == null) return;
 
             // Use reflection to dynamically create results
             foreach (var pi in CurrentStatistics.GetType().GetProperties())
@@ -82,7 +83,10 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
                 statsComboBox.Items.Add(pi.Name);
             }
 
+            if (statsComboBox.Items.Count == 0) return;
+
             // Restore selection if one existed
+            var restored = false;
             if (!string.IsNullOrWhiteSpace(SelectedStatistic))
             {
                 for (var i = 0; i < statsComboBox.Items.Count; i++)
@@ -91,16 +95,28 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
 
                     if (item.ToString() == SelectedStatistic)
                     {
+                        var indexChanged = statsComboBox.SelectedIndex != i;
                         statsComboBox.SelectedIndex = i;
-                        BindSelectedStats();
+                        if (!indexChanged) BindSelectedStats();
+                        restored = true;
                         break;
                     }
                 }
             }
-            // Otherwise just select the first result
-            else
+
+            if (!restored)
             {
                 statsComboBox.SelectedIndex = 0;
+            }
+        }
+
+        private void ClearResultTabs()
+        {
+            while (tabControl.TabPages.Count > 0)
+            {
+                var tab = tabControl.TabPages[0];
+                tabControl.TabPages.RemoveAt(0);
+                tab.Dispose();
             }
         }
 
@@ -108,7 +124,7 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
         void BindSelectedStats()
         {
             // Clear current tab list
-            tabControl.TabPages.Clear();
+            ClearResultTabs();
 
             if (string.IsNullOrWhiteSpace(SelectedStatistic) || statsComboBox.SelectedItem == null) return;
             IEnumerable<InfluxDbSeries> statResults = null;

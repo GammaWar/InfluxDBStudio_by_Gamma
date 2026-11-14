@@ -131,7 +131,10 @@ namespace CymaticLabs.InfluxDB.Studio.Dialogs
             nameTextBox.ReadOnly = false;
             nameTextBox.Text = policy.Name;
             durationTextBox.Text = policy.Duration;
-            replicationNumeric.Value = policy.ReplicationCopies;
+            var rep = policy.ReplicationCopies;
+            if (rep < replicationNumeric.Minimum) rep = (int)replicationNumeric.Minimum;
+            if (rep > replicationNumeric.Maximum) rep = (int)replicationNumeric.Maximum;
+            replicationNumeric.Value = rep;
             defaultCheckBox.Checked = policy.Default;
             IsCreating = false;
         }
@@ -151,15 +154,15 @@ namespace CymaticLabs.InfluxDB.Studio.Dialogs
 
             if (string.IsNullOrWhiteSpace(duration))
             {
-                AppForm.DisplayError("Duration cannot be blank. It should be an InfluxDB time interval value such as: 1d, 2h, 10m, 30s, etc.");
+                AppForm.DisplayError("Duration cannot be blank. It should be an InfluxDB time interval value such as: 1d, 2h, 10m, 30s, 0s, or INF.");
                 return false;
             }
 
             duration = duration.Trim();
 
-            if (!InfluxDbHelper.IsTimeIntervalValid(duration))
+            if (!InfluxDbHelper.IsTimeIntervalValid(duration, allowInfinite: true))
             {
-                AppForm.DisplayError("Duration value is invalid. It should be an InfluxDB time interval value such as: 1d, 2h, 10m, 30s, etc.");
+                AppForm.DisplayError("Duration value is invalid. It should be an InfluxDB time interval value such as: 1d, 2h, 10m, 30s, 0s, or INF.");
                 return false;
             }
 

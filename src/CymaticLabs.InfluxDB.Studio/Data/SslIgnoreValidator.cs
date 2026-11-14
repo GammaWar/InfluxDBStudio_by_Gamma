@@ -1,11 +1,12 @@
-﻿using System.Net;
+using System.Net;
+using System.Net.Http;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 
 namespace CymaticLabs.InfluxDB.Data
 {
     /// <summary>
-    /// Utility class used to ignore verifying SSL/TLS certificates.
+    /// Utility class used to configure SSL/TLS certificates and security protocols.
     /// </summary>
     public static class SslIgnoreValidator
     {
@@ -15,8 +16,22 @@ namespace CymaticLabs.InfluxDB.Data
         // Whether or not to allow untrusted SSL/TLS certificates.
         private static bool allowUntrusted = false;
 
+        static SslIgnoreValidator()
+        {
+            // Ensure modern TLS protocols are enabled
+            try
+            {
+                ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12 | SecurityProtocolType.Tls13;
+            }
+            catch
+            {
+                // Fallback if Tls13 is not supported by underlying OS
+                ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
+            }
+        }
+
         /// <summary>
-        /// Gets whether or not to allow untrusted SSL/TLS certificates.
+        /// Gets or sets whether or not to allow untrusted SSL/TLS certificates.
         /// </summary>
         public static bool AllowUntrusted
         {
@@ -27,26 +42,39 @@ namespace CymaticLabs.InfluxDB.Data
                 allowUntrusted = value;
 
                 // Configure untrusted allowances as needed
-                if (allowUntrusted && !enabled)
+                if (allowUntrusted)
                 {
                     OverrideValidation();
                     enabled = true;
                 }
+                else if (enabled)
+                {
+                    ResetValidation();
+                    enabled = false;
+                }
             }
         }
 
-        // Custom validation method
+        /// <summary>
+        /// Creates a configured HttpClientHandler with certificate validation based on current settings.
+        /// </summary>
+        public static HttpClientHandler CreateHttpClientHandler()
+        {
+            var handler = new HttpClientHandler();
+            handler.ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) =>
+            {
+                if (allowUntrusted) return true;
+                return sslPolicyErrors == SslPolicyErrors.None;
+            };
+
+            return handler;
+        }
+
+        // Custom validation method for legacy ServicePointManager
         private static bool OnValidateCertificate(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
         {
-            if (sslPolicyErrors != SslPolicyErrors.None)
-            {
-                if (!allowUntrusted && sslPolicyErrors == SslPolicyErrors.RemoteCertificateChainErrors)
-                {
-                    return false;
-                }
-            }
-
-            return true;
+            if (allowUntrusted) return true;
+            return sslPolicyErrors == SslPolicyErrors.None;
         }
 
         // Overrides SSL/TLS certificate validation.
@@ -54,6 +82,12 @@ namespace CymaticLabs.InfluxDB.Data
         {
             ServicePointManager.ServerCertificateValidationCallback = OnValidateCertificate;
             ServicePointManager.Expect100Continue = true;
+        }
+
+        // Resets SSL/TLS certificate validation back to default.
+        static void ResetValidation()
+        {
+            ServicePointManager.ServerCertificateValidationCallback = null;
         }
     }
 }

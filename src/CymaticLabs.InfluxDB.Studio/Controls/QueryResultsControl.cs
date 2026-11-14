@@ -143,12 +143,12 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
                 listView.Columns.Add(col);
             }
 
-            // Build the rows
+            // Build the rows in a batch for fast rendering
+            var rowItems = new List<ListViewItem>(result.Values.Count);
             for (var i = 0; i < result.Values.Count; i++)
             {
                 // Create the top level row item and give it the record number as a label
                 ListViewItem li = new ListViewItem((++resultsCount).ToString());
-                listView.Items.Add(li);
 
                 // Get the columns/values for the row
                 var r = result.Values[i];
@@ -163,6 +163,13 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
                     li2.Tag = r;
                     li.SubItems.Add(li2);
                 }
+
+                rowItems.Add(li);
+            }
+
+            if (rowItems.Count > 0)
+            {
+                listView.Items.AddRange(rowItems.ToArray());
             }
 
             // Resize each column
@@ -184,7 +191,9 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
             try
             {
                 // Configure save dialog and open
-                saveFileDialog.FileName = string.Format("{0}.csv", InfluxDbClient.Connection.Name + "_" + Database);
+                var connName = InfluxDbClient?.Connection?.Name ?? "export";
+                var dbSuffix = string.IsNullOrWhiteSpace(Database) ? string.Empty : "_" + Database;
+                saveFileDialog.FileName = string.Format("{0}.csv", connName + dbSuffix);
                 saveFileDialog.Filter = "CSV files|*.csv|All files|*.*";
 
                 if (saveFileDialog.ShowDialog() == DialogResult.OK)
@@ -199,7 +208,7 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
                         // Write the CSV column names (skip first column which is just row # label)
                         for (var i = 1; i < listView.Columns.Count; i++)
                         {
-                            sb.Append(listView.Columns[i].Text);
+                            sb.Append(InfluxDbHelper.EscapeCsvField(listView.Columns[i].Text));
                             if (i < listView.Columns.Count - 1) sb.Append(",");
                         }
 
@@ -216,7 +225,7 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
                             for (var i = 1; i < li.SubItems.Count; i++)
                             {
                                 var sli = li.SubItems[i];
-                                sb.Append(sli.Text);
+                                sb.Append(InfluxDbHelper.EscapeCsvField(sli.Text));
                                 if (i < li.SubItems.Count - 1) sb.Append(",");
                             }
 
@@ -237,7 +246,9 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
             try
             {
                 // Configure save dialog and open
-                saveFileDialog.FileName = string.Format("{0}.json", InfluxDbClient.Connection.Name + "_" + Database);
+                var connName = InfluxDbClient?.Connection?.Name ?? "export";
+                var dbSuffix = string.IsNullOrWhiteSpace(Database) ? string.Empty : "_" + Database;
+                saveFileDialog.FileName = string.Format("{0}.json", connName + dbSuffix);
                 saveFileDialog.Filter = "JSON files|*.json|All files|*.*";
 
                 if (saveFileDialog.ShowDialog() == DialogResult.OK)
@@ -247,22 +258,13 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
 
                     if (lastResult != null)
                     {
-                        // Build name lookup
-                        var indexToName = new Dictionary<int, string>();
-
-                        foreach (var colName in lastResult.Columns)
-                        {
-                            if (!indexToName.ContainsKey(indexToName.Count))
-                                indexToName.Add(indexToName.Count, colName);
-                        }
-
                         // Build selected states from UI state
                         var selectedByRowId = new Dictionary<int, bool>();
 
                         for (var i = 0; i < listView.Items.Count; i++)
                         {
                             var li = listView.Items[i];
-                            selectedByRowId.Add(i, li.Selected);
+                            selectedByRowId[i] = li.Selected;
                         }
 
                         // Convert results to JSON for export
@@ -270,18 +272,17 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
                         {
                             var r = lastResult.Values[i];
 
-                            if (onlySelected && !selectedByRowId[i]) continue;
+                            if (onlySelected && (!selectedByRowId.TryGetValue(i, out var isSelected) || !isSelected)) continue;
 
                             // Convert to outgoing dictionary
                             var d = new Dictionary<string, object>();
 
-                            for (var x = 0; x < r.Count; x++)
+                            for (var x = 0; x < r.Count && x < lastResult.Columns.Count; x++)
                             {
-                                var key = indexToName[x];
+                                var key = lastResult.Columns[x];
                                 var value = r[x];
 
-                                if (d.ContainsKey(key)) d[key] = value;
-                                else d.Add(key, value);
+                                d[key] = value;
                             }
 
                             // Add to outgoing json structure

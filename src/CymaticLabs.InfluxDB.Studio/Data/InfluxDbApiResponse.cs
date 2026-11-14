@@ -31,8 +31,7 @@ namespace CymaticLabs.InfluxDB.Data
 
         public InfluxDbApiResponse(string body, HttpStatusCode statusCode, bool success)
         {
-            if (string.IsNullOrWhiteSpace(body)) throw new ArgumentNullException("body");
-            Body = body;
+            Body = body ?? string.Empty;
             StatusCode = statusCode;
             Success = success;
         }

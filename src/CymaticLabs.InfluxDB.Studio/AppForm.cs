@@ -657,7 +657,7 @@ namespace CymaticLabs.InfluxDB.Studio
                 // Ensure this is not a duplicate by name
                 foreach (var c in Settings.Connections)
                 {
-                    if (c.Name == connection.Name)
+                    if (string.Equals(c.Name, connection.Name, StringComparison.OrdinalIgnoreCase))
                     {
                         DisplayError("A connection already exists with name: " + c.Name, "Connection Exists");
                         return;
@@ -685,17 +685,43 @@ namespace CymaticLabs.InfluxDB.Studio
                 // Save connection data
                 Settings.SaveConnections();
 
+                // Recreate active client if this connection is currently open so updated host/auth/SSL/version settings take effect
+                var existingClient = GetClient(connection);
+                if (existingClient != null)
+                {
+                    connection.DetectedApiVersion = null;
+                    connection.DetectedServerVersion = null;
+                    var newClient = await CreateClientForConnectionAsync(connection);
+                    if (newClient == null) return;
+
+                    var idx = ActiveClients.IndexOf(existingClient);
+                    if (idx >= 0) ActiveClients[idx] = newClient;
+
+                    foreach (TabPage tab in tabControl.TabPages)
+                    {
+                        if (tab.Controls.Count > 0 && tab.Controls[0] is RequestControl requestControl &&
+                            requestControl.InfluxDbClient == existingClient)
+                        {
+                            requestControl.InfluxDbClient = newClient;
+                        }
+                    }
+
+                    (existingClient as IDisposable)?.Dispose();
+                }
+
                 // Go through active connection and update the matching connection in the UI if found
                 foreach (TreeNode node in connectionsTreeView.Nodes)
                 {
                     var c = node.Tag as InfluxDbConnection;
 
-                    if (c.Id == connection.Id || c == connection)
+                    if (c != null && (c.Id == connection.Id || c == connection))
                     {
                         await RenderConnectionDetails(node, connection, true);
                         break;
                     }
                 }
+
+                UpdateUIState();
             }
             catch (Exception ex)
             {
@@ -724,7 +750,8 @@ namespace CymaticLabs.InfluxDB.Studio
                 // Remove from UI
                 foreach (TreeNode node in connectionsTreeView.Nodes)
                 {
-                    if (node.Text == connection.Name)
+                    var nodeConn = node.Tag as InfluxDbConnection;
+                    if (nodeConn != null && (nodeConn.Id == connection.Id || nodeConn == connection))
                     {
                         Disconnect(node);
                         break;
@@ -758,8 +785,11 @@ namespace CymaticLabs.InfluxDB.Studio
                     // Open the file
                     var json = File.ReadAllText(openFileDialog.FileName);
 
-                    // Convert to app settings object
-                    Settings = JsonConvert.DeserializeObject<AppSettings>(json);
+                    // Parse using LoadFromJson to avoid triggering setter saves and to unprotect encrypted secrets
+                    var importedSettings = new AppSettings();
+                    if (!importedSettings.LoadFromJson(json)) return;
+
+                    Settings = importedSettings;
 
                     // Save to disk
                     Settings.SaveAll();
@@ -782,11 +812,26 @@ namespace CymaticLabs.InfluxDB.Studio
         {
             try
             {
+                var includeSecrets = false;
+                if (Settings.Connections != null && Settings.Connections.Count > 0)
+                {
+                    var choice = MessageBox.Show(
+                        "Include passwords and API tokens in plain text in the exported file?\n\n" +
+                        "Yes = Include credentials (keep exported file secure)\n" +
+                        "No = Omit passwords and API tokens",
+                        "Export Credentials",
+                        MessageBoxButtons.YesNoCancel,
+                        MessageBoxIcon.Question);
+
+                    if (choice == DialogResult.Cancel) return;
+                    includeSecrets = choice == DialogResult.Yes;
+                }
+
                 // Prompt to save
                 if (saveFileDialog.ShowDialog() == DialogResult.OK)
                 {
                     // Serialize to JSON
-                    var json = JsonConvert.SerializeObject(Settings, Formatting.Indented);
+                    var json = Settings.ExportToJson(includeSecrets);
 
                     // Write to file
                     File.WriteAllText(saveFileDialog.FileName, json);
@@ -1038,18 +1083,16 @@ namespace CymaticLabs.InfluxDB.Studio
             {
                 // Remove from active connections list
                 var connection = GetConnection(node);
-                var client = GetClient(connection);
+                var client = connection != null ? GetClient(connection) : null;
 
                 // Go through and remove all tabs associated with this connection
                 var removedTabs = new List<TabPage>();
 
                 foreach (TabPage tab in tabControl.TabPages)
                 {
-                    if (tab.Controls.Count > 0 && tab.Controls[0] is RequestControl)
+                    if (tab.Controls.Count > 0 && tab.Controls[0] is RequestControl requestControl)
                     {
-                        var requestControl = tab.Controls[0] as RequestControl;
-                        if (requestControl == null) continue;
-                        if (requestControl.InfluxDbClient.Connection.Id == connection.Id)
+                        if (connection != null && requestControl.InfluxDbClient?.Connection?.Id == connection.Id)
                         {
                             removedTabs.Add(tab);
                         }
@@ -1058,14 +1101,19 @@ namespace CymaticLabs.InfluxDB.Studio
 
                 foreach (TabPage tab in removedTabs)
                 {
-                    tabControl.Controls.Remove(tab);
+                    tabControl.TabPages.Remove(tab);
+                    tab.Dispose();
                 }
 
-                // Remove from active clients
-                ActiveClients.Remove(client);
+                // Remove from active clients and dispose underlying HTTP resources
+                if (client != null)
+                {
+                    ActiveClients.Remove(client);
+                    (client as IDisposable)?.Dispose();
+                }
 
-                // Really nothing to disconnect, just remove the node
-                connectionsTreeView.Nodes.Remove(node);
+                // Remove the node from tree view
+                node.Remove();
                 
                 // Update UI
                 UpdateUIState();
@@ -1193,14 +1241,14 @@ namespace CymaticLabs.InfluxDB.Studio
 
                     if (connection == null)
                     {
-                        DisplayError("Connection not found: " + createDatabaseDialog.ConnectionName, "Error Creating Database");
+                        DisplayError("Connection not found.", "Error Dropping Database");
                         return;
                     }
 
                     // Get the active client for the connection
                     var client = GetClient(connection);
 
-                    // Create the database and receive the response
+                    // Drop the database and receive the response
                     var response = await client.DropDatabaseAsync(name);
 
                     if (!response.Success)
@@ -1211,8 +1259,9 @@ namespace CymaticLabs.InfluxDB.Studio
 
                     // Remove the database from the UI list
                     connectionsTreeView.BeginUpdate();
-                    connectionsTreeView.Nodes.Remove(node);
+                    node.Remove();
                     connectionsTreeView.EndUpdate();
+                    UpdateUIState();
                 }
             }
             catch (Exception ex)
@@ -1370,14 +1419,14 @@ namespace CymaticLabs.InfluxDB.Studio
 
                     if (connection == null)
                     {
-                        DisplayError("Connection not found: " + createDatabaseDialog.ConnectionName, "Error Creating Database");
+                        DisplayError("Connection not found.", "Error Dropping Measurement");
                         return;
                     }
 
                     // Get the active client for the connection
                     var client = GetClient(connection);
 
-                    // Create the database and receive the response
+                    // Drop the measurement and receive the response
                     var response = await client.DropMeasurementAsync(dbName, name);
 
                     if (!response.Success)
@@ -1386,10 +1435,11 @@ namespace CymaticLabs.InfluxDB.Studio
                         return;
                     }
 
-                    // Remove the series from the UI list
+                    // Remove the measurement from the UI list
                     connectionsTreeView.BeginUpdate();
-                    connectionsTreeView.Nodes.Remove(node);
+                    node.Remove();
                     connectionsTreeView.EndUpdate();
+                    UpdateUIState();
                 }
             }
             catch (Exception ex)
@@ -1414,7 +1464,7 @@ namespace CymaticLabs.InfluxDB.Studio
 
                     if (connection == null)
                     {
-                        DisplayError("Connection not found: " + createDatabaseDialog.ConnectionName, "Error Creating Database");
+                        DisplayError("Connection not found.", "Error Dropping Series");
                         return;
                     }
 
@@ -1484,7 +1534,9 @@ namespace CymaticLabs.InfluxDB.Studio
                 var queryControl = new QueryControl();
                 queryControl.InfluxDbClient = client;
                 queryControl.Database = database;
-                queryControl.EditorText = string.Format("SELECT * FROM \"{0}\" WHERE time > now() - 5m", measurement);
+                queryControl.EditorText = client != null
+                    ? client.GetDefaultQuery(database, measurement)
+                    : string.Format("SELECT * FROM \"{0}\" WHERE time > now() - 5m", measurement);
 
                 // Add a tab with a query control in it
                 tabControl.AddTabWithControl(connection.Name + "." + database, queryControl, Properties.Resources.RunQuery);
@@ -1592,6 +1644,7 @@ namespace CymaticLabs.InfluxDB.Studio
             }
 
             // Apply untrusted SSL
+            SslIgnoreValidator.AllowUntrusted = Settings.AllowUntrustedSsl;
             allowUntrustedSSLToolStripMenuItem.Checked = Settings.AllowUntrustedSsl;
         }
 
@@ -1604,6 +1657,8 @@ namespace CymaticLabs.InfluxDB.Studio
         {
             var node = connectionsTreeView.SelectedNode;
             var type = node != null ? GetNodeType(node) : InfluxDbNodeTypes.LoadingPlacholder;
+            var connection = node != null ? GetConnection(node) : null;
+            var client = connection != null ? GetClient(connection) : null;
             var canRunQeury = CanRunQuery();
 
             #region File Menu
@@ -1622,7 +1677,7 @@ namespace CymaticLabs.InfluxDB.Studio
             // Update run query based on whether or not a request control is currently in focus
             runQueryToolStripMenuItem.Enabled = canRunQeury;
             newQueryToolStripMenuItem2.Enabled = type == InfluxDbNodeTypes.Database || type == InfluxDbNodeTypes.Measurement;
-            showQueriesToolStripMenuItem.Enabled = type == InfluxDbNodeTypes.Connection;
+            showQueriesToolStripMenuItem.Enabled = type == InfluxDbNodeTypes.Connection && (client == null || client.SupportsRunningQueries);
 
             #endregion File Menu
 
@@ -1656,21 +1711,21 @@ namespace CymaticLabs.InfluxDB.Studio
                 disconnectButton.Enabled = true;
                 refreshButton.Enabled = type == InfluxDbNodeTypes.Connection || type == InfluxDbNodeTypes.Database;
                 newQueryButton.Enabled = type == InfluxDbNodeTypes.Database || type == InfluxDbNodeTypes.Measurement;
-                showQueriesButton.Enabled = type == InfluxDbNodeTypes.Connection;
-                showPoliciesButton.Enabled = type == InfluxDbNodeTypes.Connection;
-                showUsersButton.Enabled = type == InfluxDbNodeTypes.Connection;
-                showStatsButton.Enabled = type == InfluxDbNodeTypes.Connection;
-                showDiagnosticsButton.Enabled = type == InfluxDbNodeTypes.Connection;
-                createDatabaseButton.Enabled = type == InfluxDbNodeTypes.Connection;
-                continuousQueryButton.Enabled = type == InfluxDbNodeTypes.Database;
-                backFillButton.Enabled = type == InfluxDbNodeTypes.Database;
-                dropDatabaseButton.Enabled = type == InfluxDbNodeTypes.Database && node.Text != "_internal";
+                showQueriesButton.Enabled = type == InfluxDbNodeTypes.Connection && (client == null || client.SupportsRunningQueries);
+                showPoliciesButton.Enabled = type == InfluxDbNodeTypes.Connection && (client == null || client.SupportsRetentionPolicies);
+                showUsersButton.Enabled = type == InfluxDbNodeTypes.Connection && (client == null || client.SupportsUsers);
+                showStatsButton.Enabled = type == InfluxDbNodeTypes.Connection && (client == null || client.SupportsStats);
+                showDiagnosticsButton.Enabled = type == InfluxDbNodeTypes.Connection && (client == null || client.SupportsDiagnostics);
+                createDatabaseButton.Enabled = type == InfluxDbNodeTypes.Connection && (client == null || client.SupportsCreateDatabase);
+                continuousQueryButton.Enabled = type == InfluxDbNodeTypes.Database && (client == null || client.SupportsContinuousQueries);
+                backFillButton.Enabled = type == InfluxDbNodeTypes.Database && (client == null || client.SupportsBackfill);
+                dropDatabaseButton.Enabled = type == InfluxDbNodeTypes.Database && node.Text != "_internal" && (client == null || client.SupportsDropDatabase);
                 tagKeysButton.Enabled = type == InfluxDbNodeTypes.Measurement;
                 tagValuesButton.Enabled = type == InfluxDbNodeTypes.Measurement;
                 fieldKeysButton.Enabled = type == InfluxDbNodeTypes.Measurement;
-                showSeriesButton.Enabled = type == InfluxDbNodeTypes.Measurement;
-                dropSeriesButton.Enabled = type == InfluxDbNodeTypes.Measurement;
-                dropMeasurementButton.Enabled = type == InfluxDbNodeTypes.Measurement;
+                showSeriesButton.Enabled = type == InfluxDbNodeTypes.Measurement && (client == null || client.SupportsSeriesDiscovery);
+                dropSeriesButton.Enabled = type == InfluxDbNodeTypes.Measurement && (client == null || client.SupportsDropSeries);
+                dropMeasurementButton.Enabled = type == InfluxDbNodeTypes.Measurement && (client == null || client.SupportsDropMeasurement);
             }
 
             // Update run query based on whether or not a request control is currently in focus
@@ -1680,10 +1735,18 @@ namespace CymaticLabs.InfluxDB.Studio
 
             #region Context Menus
 
-            showQueriesContextMenuItem.Enabled = type == InfluxDbNodeTypes.Connection;
-            continousQueriesToolStripMenuItem.Enabled = type == InfluxDbNodeTypes.Database;
-            backFillToolStripMenuItem.Enabled = type == InfluxDbNodeTypes.Database;
-            dropDatabaseToolStripMenuItem.Enabled = type == InfluxDbNodeTypes.Database && node.Text != "_internal";
+            createDatabaseToolStripMenuItem.Enabled = type == InfluxDbNodeTypes.Connection && (client == null || client.SupportsCreateDatabase);
+            showQueriesContextMenuItem.Enabled = type == InfluxDbNodeTypes.Connection && (client == null || client.SupportsRunningQueries);
+            showPoliciesToolStripMenuItem.Enabled = type == InfluxDbNodeTypes.Connection && (client == null || client.SupportsRetentionPolicies);
+            showUsersToolStripMenuItem.Enabled = type == InfluxDbNodeTypes.Connection && (client == null || client.SupportsUsers);
+            showStatisticsToolStripMenuItem.Enabled = type == InfluxDbNodeTypes.Connection && (client == null || client.SupportsStats);
+            diagnosticsToolStripMenuItem.Enabled = type == InfluxDbNodeTypes.Connection && (client == null || client.SupportsDiagnostics);
+            continousQueriesToolStripMenuItem.Enabled = type == InfluxDbNodeTypes.Database && (client == null || client.SupportsContinuousQueries);
+            backFillToolStripMenuItem.Enabled = type == InfluxDbNodeTypes.Database && (client == null || client.SupportsBackfill);
+            dropDatabaseToolStripMenuItem.Enabled = type == InfluxDbNodeTypes.Database && node != null && node.Text != "_internal" && (client == null || client.SupportsDropDatabase);
+            showSeriesToolStripMenuItem.Enabled = type == InfluxDbNodeTypes.Measurement && (client == null || client.SupportsSeriesDiscovery);
+            dropSeriesToolStripMenuItem.Enabled = type == InfluxDbNodeTypes.Measurement && (client == null || client.SupportsDropSeries);
+            dropMeasurementToolStripMenuItem.Enabled = type == InfluxDbNodeTypes.Measurement && (client == null || client.SupportsDropMeasurement);
 
             #endregion Context Menus
         }
@@ -1745,18 +1808,107 @@ namespace CymaticLabs.InfluxDB.Studio
             }
         }
 
+        // Resolves client with auto-detection when ApiVersion == Auto; prompts explicitly before DB entry if ambiguous
+        async Task<InfluxDbClient> CreateClientForConnectionAsync(InfluxDbConnection connection)
+        {
+            if (connection == null) return null;
+
+            try
+            {
+                if (connection.ApiVersion == InfluxDbApiVersion.Auto)
+                {
+                    SetStatus($"Detecting InfluxDB version for '{connection.Name}'...");
+                }
+
+                var client = await InfluxDbClientFactory.CreateAsync(connection);
+                SetStatus($"Connected to '{connection.Name}' ({client.ApiVersion})");
+                return client;
+            }
+            catch (InfluxDbVersionAmbiguousException ambEx)
+            {
+                var chosen = PromptExplicitApiVersion(connection, ambEx.Message);
+                if (!chosen.HasValue)
+                {
+                    SetStatus($"Connection '{connection.Name}' cancelled.");
+                    return null;
+                }
+
+                connection.ApiVersion = chosen.Value;
+                connection.DetectedApiVersion = null;
+                Settings.SaveConnections();
+                var client = InfluxDbClientFactory.Create(connection);
+                SetStatus($"Connected to '{connection.Name}' ({client.ApiVersion})");
+                return client;
+            }
+        }
+
+        // Modal selector shown before entering a database if auto-detection cannot distinguish 1.x / 2.x / 3.x
+        InfluxDbApiVersion? PromptExplicitApiVersion(InfluxDbConnection connection, string details)
+        {
+            using (var dlg = new Form())
+            using (var info = new Label())
+            using (var combo = new ComboBox())
+            using (var okBtn = new Button())
+            using (var cancelBtn = new Button())
+            {
+                dlg.Text = "Select InfluxDB Version";
+                dlg.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dlg.StartPosition = FormStartPosition.CenterParent;
+                dlg.MaximizeBox = false;
+                dlg.MinimizeBox = false;
+                dlg.ClientSize = new System.Drawing.Size(400, 175);
+
+                info.SetBounds(14, 14, 372, 65);
+                info.Text = $"Auto-detection could not identify the server version for '{connection.Name}'.\r\n" +
+                            $"Please choose the InfluxDB API version before connecting:\r\n({details})";
+
+                combo.DropDownStyle = ComboBoxStyle.DropDownList;
+                combo.SetBounds(14, 88, 372, 24);
+                combo.Items.AddRange(new object[]
+                {
+                    "InfluxDB 1.x (InfluxQL)",
+                    "InfluxDB 2.x (Flux / Buckets)",
+                    "InfluxDB 3.x (SQL / InfluxQL)"
+                });
+                combo.SelectedIndex = 0;
+
+                okBtn.Text = "Connect";
+                okBtn.DialogResult = DialogResult.OK;
+                okBtn.SetBounds(224, 130, 78, 26);
+
+                cancelBtn.Text = "Cancel";
+                cancelBtn.DialogResult = DialogResult.Cancel;
+                cancelBtn.SetBounds(308, 130, 78, 26);
+
+                dlg.Controls.AddRange(new Control[] { info, combo, okBtn, cancelBtn });
+                dlg.AcceptButton = okBtn;
+                dlg.CancelButton = cancelBtn;
+
+                if (dlg.ShowDialog(this) != DialogResult.OK) return null;
+
+                switch (combo.SelectedIndex)
+                {
+                    case 1: return InfluxDbApiVersion.V2;
+                    case 2: return InfluxDbApiVersion.V3;
+                    default: return InfluxDbApiVersion.V1;
+                }
+            }
+        }
+
         // Adds an InfluxDB connection to the active list
         async Task RenderConnection(InfluxDbConnection connection)
         {
             try
             {
+                // Auto-detect or resolve API version before entering databases
+                var client = await CreateClientForConnectionAsync(connection);
+                if (client == null) return;
+
                 // Add the connection
                 var connectionNode = CreateTreeNode(connection.Name, InfluxDbNodeTypes.Connection, connection);
                 connectionNode.ContextMenuStrip = connectionsContextMenu;
                 connectionsTreeView.Nodes.Add(connectionNode);
 
-                // Create an active client for this connection
-                var client = InfluxDbClientFactory.Create(connection);
                 ActiveClients.Add(client);
 
                 // Render the connection in the view
@@ -1764,6 +1916,7 @@ namespace CymaticLabs.InfluxDB.Studio
 
                 // If there are currently no selected nodes, select the new connection
                 if (connectionsTreeView.SelectedNode == null) connectionsTreeView.SelectedNode = connectionNode;
+                UpdateUIState();
             }
             catch (Exception ex)
             {
@@ -1923,7 +2076,12 @@ namespace CymaticLabs.InfluxDB.Studio
         /// <param name="text">The text to set.</param>
         public static void SetStatus(string text)
         {
-            if (instance == null) return;
+            if (instance == null || instance.IsDisposed) return;
+            if (instance.InvokeRequired)
+            {
+                instance.BeginInvoke(new Action(() => SetStatus(text)));
+                return;
+            }
             instance.statusLabel.Text = text;
         }
 
@@ -1938,17 +2096,22 @@ namespace CymaticLabs.InfluxDB.Studio
             if (ex == null) throw new ArgumentNullException("ex");
 
             // Workaround for KILL QUERY command
-            if (ex is InfluxData.Net.Common.Infrastructure.InfluxDataApiException)
+            if (ex is InfluxData.Net.Common.Infrastructure.InfluxDataApiException apiEx)
             {
-                var apiEx = (InfluxData.Net.Common.Infrastructure.InfluxDataApiException)ex;
-                if (apiEx.ResponseBody.Contains("query interrupted")) return;
+                if (apiEx.ResponseBody != null && apiEx.ResponseBody.Contains("query interrupted")) return;
             }
 
             var message = ex.InnerException != null ? ex.InnerException.Message : ex.Message;
-            if (stackTrace) message += "\n\n{0}" + ex.StackTrace;
+            if (stackTrace) message += "\n\n" + ex.StackTrace;
 
             try { Log.ErrorFormat("{0}", ex); }
             catch { }
+
+            if (instance != null && !instance.IsDisposed && instance.InvokeRequired)
+            {
+                instance.BeginInvoke(new Action(() => MessageBox.Show(message, caption, MessageBoxButtons.OK, MessageBoxIcon.Error)));
+                return;
+            }
 
             MessageBox.Show(message, caption, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
@@ -1964,6 +2127,12 @@ namespace CymaticLabs.InfluxDB.Studio
 
             try { Log.ErrorFormat("{0}", message); }
             catch { }
+
+            if (instance != null && !instance.IsDisposed && instance.InvokeRequired)
+            {
+                instance.BeginInvoke(new Action(() => MessageBox.Show(message, caption, MessageBoxButtons.OK, MessageBoxIcon.Error)));
+                return;
+            }
 
             MessageBox.Show(message, caption, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }

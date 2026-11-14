@@ -139,9 +139,9 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
                 listView.Items.Add(new ListViewItem(new string[]
                 {
                     q.PID.ToString(),
-                    q.Duration,
-                    q.Database.ToString(),
-                    q.Query
+                    q.Duration ?? string.Empty,
+                    q.Database ?? string.Empty,
+                    q.Query ?? string.Empty
                 }) { Tag = q });
             }
 

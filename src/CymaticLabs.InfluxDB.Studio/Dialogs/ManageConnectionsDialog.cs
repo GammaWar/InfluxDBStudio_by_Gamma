@@ -118,9 +118,16 @@ namespace CymaticLabs.InfluxDB.Studio.Dialogs
             {
                 connectionDialog.ResetValues();
 
-                // Show the create dialog
-                if (connectionDialog.ShowDialog() == DialogResult.OK)
+                // Show the create dialog, keeping user input if name collides
+                while (connectionDialog.ShowDialog() == DialogResult.OK)
                 {
+                    var candidateName = connectionDialog.ConnectionName?.Trim();
+                    if (AppForm.Settings.Connections.Exists(c => string.Equals(c.Name, candidateName, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        AppForm.DisplayError("A connection already exists with name: " + candidateName, "Connection Exists");
+                        continue;
+                    }
+
                     // Get a connection object from the dialog
                     var connection = connectionDialog.CreateConnection();
 
@@ -129,6 +136,7 @@ namespace CymaticLabs.InfluxDB.Studio.Dialogs
 
                     // Redraw
                     RedrawConnections();
+                    break;
                 }
             }
             catch (Exception ex)

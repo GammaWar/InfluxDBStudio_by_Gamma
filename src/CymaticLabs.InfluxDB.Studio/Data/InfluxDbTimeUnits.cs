@@ -1,4 +1,4 @@
-﻿namespace CymaticLabs.InfluxDB.Data
+namespace CymaticLabs.InfluxDB.Data
 {
     /// <summary>
     /// Different time interval units supported by InfluxDb: u, ms, s, m, h, d, w.
@@ -9,6 +9,11 @@
         /// No interval specified or an unknown/unsupported interval.
         /// </summary>
         None,
+
+        /// <summary>
+        /// Nanosecond: ns
+        /// </summary>
+        Nanoseconds,
 
         /// <summary>
         /// Microsecond: u

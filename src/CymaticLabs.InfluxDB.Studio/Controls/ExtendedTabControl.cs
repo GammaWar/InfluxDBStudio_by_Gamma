@@ -144,25 +144,30 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
         // Handle tab control mouse up - used for custom close interaction
         private void ExtendedTabControl_MouseUp(object sender, MouseEventArgs e)
         {
-            if (!ShowTabCloseArea) return;
+            if (!ShowTabCloseArea || TabCount == 0) return;
 
-            Rectangle r = GetTabRect(SelectedIndex);
-            Rectangle closeButton = new Rectangle(r.Right - TabCloseWidth, r.Top + 4, 10, 10);
-
-            // Left click, check for tab close
-            if (e.Button == MouseButtons.Left && closeButton.Contains(e.Location))
+            // Left click, check for tab close across all tabs
+            if (e.Button == MouseButtons.Left)
             {
-                // Remove tab if a close click detected
-                CloseTab(SelectedTab);
+                for (int i = 0; i < TabCount; i++)
+                {
+                    Rectangle r = GetTabRect(i);
+                    Rectangle closeButton = new Rectangle(r.Right - TabCloseWidth, r.Top + 4, 10, 10);
+                    if (closeButton.Contains(e.Location))
+                    {
+                        CloseTab(TabPages[i]);
+                        return;
+                    }
+                }
             }
             // Right click, show tab context menu
             else if (e.Button == MouseButtons.Right)
             {
-                // First go through and get the tab that was right-clicked
+                tabToLeave = null;
                 Point p = PointToClient(Cursor.Position);
                 for (int i = 0; i < TabCount; i++)
                 {
-                    r = GetTabRect(i);
+                    Rectangle r = GetTabRect(i);
 
                     if (r.Contains(p))
                     {
@@ -172,8 +177,10 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
                     }
                 }
 
-                // Now show the context menu
-                tabContextMenuStrip.Show(this, e.Location);
+                if (tabToLeave != null)
+                {
+                    tabContextMenuStrip.Show(this, e.Location);
+                }
             }
         }
 
@@ -219,26 +226,34 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
         // Handle drawing of custom tab
         private void ExtendedTabControl_DrawItem(object sender, DrawItemEventArgs e)
         {
+            if (e.Index < 0 || e.Index >= TabPages.Count) return;
+
             // If selected change font color
             var tab = TabPages[e.Index];
             var isSelected = SelectedIndex == e.Index;
-            var brush = isSelected ? new SolidBrush(Color.FromArgb(0, 0, 0)) : new SolidBrush(Color.FromArgb(128, 128, 128));
-            if (isSelected) e.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(212, 212, 212)), new RectangleF(e.Bounds.Left, e.Bounds.Top, e.Bounds.Width, e.Bounds.Height));
+
+            if (isSelected)
+            {
+                using (var selectedBrush = new SolidBrush(Color.FromArgb(212, 212, 212)))
+                {
+                    e.Graphics.FillRectangle(selectedBrush, new RectangleF(e.Bounds.Left, e.Bounds.Top, e.Bounds.Width, e.Bounds.Height));
+                }
+            }
 
             // Render tab image if present
-            if (tab is ExtendedTabPage)
+            if (tab is ExtendedTabPage extendedTab && extendedTab.TabImage != null)
             {
-                var image = ((ExtendedTabPage)tab).TabImage;
-
-                if (image != null)
-                {
-                    e.Graphics.DrawImage(image, e.Bounds.Left + TabImageLeft, e.Bounds.Top + TabImageTop + (isSelected ? 0 : -2));
-                }
+                e.Graphics.DrawImage(extendedTab.TabImage, e.Bounds.Left + TabImageLeft, e.Bounds.Top + TabImageTop + (isSelected ? 0 : -2));
             }
 
             //This code will render a "x" mark at the end of the Tab caption.
             if (ShowTabCloseArea) e.Graphics.DrawString("x", e.Font, Brushes.Black, e.Bounds.Right - TabCloseWidth, e.Bounds.Top + 4);
-            e.Graphics.DrawString(tab.Text, e.Font, brush, e.Bounds.Left + TabLeadingOffset + TabImageLeft + TabImageWidth, e.Bounds.Top + 4);
+
+            using (var textBrush = new SolidBrush(isSelected ? Color.FromArgb(0, 0, 0) : Color.FromArgb(128, 128, 128)))
+            {
+                e.Graphics.DrawString(tab.Text, e.Font, textBrush, e.Bounds.Left + TabLeadingOffset + TabImageLeft + TabImageWidth, e.Bounds.Top + 4);
+            }
+
             e.DrawFocusRectangle();
         }
 
@@ -309,7 +324,9 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
             TabPages.Remove(tab);
 
             // Notify
-            if (TabClosed != null) TabClosed(this, tab);
+            TabClosed?.Invoke(this, tab);
+
+            tab.Dispose();
         }
 
         #endregion Methods

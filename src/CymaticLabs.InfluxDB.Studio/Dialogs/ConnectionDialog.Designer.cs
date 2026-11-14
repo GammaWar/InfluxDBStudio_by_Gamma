@@ -1,4 +1,4 @@
-﻿namespace CymaticLabs.InfluxDB.Studio.Dialogs
+namespace CymaticLabs.InfluxDB.Studio.Dialogs
 {
     partial class ConnectionDialog
     {
@@ -51,6 +51,12 @@
             this.usernameLabel = new System.Windows.Forms.Label();
             this.nameLabel = new System.Windows.Forms.Label();
             this.pingButton = new System.Windows.Forms.Button();
+            this.securityToken = new System.Windows.Forms.TextBox();
+            this.tokenLabel = new System.Windows.Forms.Label();
+            this.apiVersionLabel = new System.Windows.Forms.Label();
+            this.apiVersionCombo = new System.Windows.Forms.ComboBox();
+            this.organizationLabel = new System.Windows.Forms.Label();
+            this.organization = new System.Windows.Forms.TextBox();
             this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.port)).BeginInit();
             this.SuspendLayout();
@@ -59,10 +65,10 @@
             // 
             this.cancelButon.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.cancelButon.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.cancelButon.Location = new System.Drawing.Point(389, 319);
+            this.cancelButon.Location = new System.Drawing.Point(389, 404);
             this.cancelButon.Name = "cancelButon";
             this.cancelButon.Size = new System.Drawing.Size(75, 23);
-            this.cancelButon.TabIndex = 9;
+            this.cancelButon.TabIndex = 13;
             this.cancelButon.Text = "Cancel";
             this.cancelButon.UseVisualStyleBackColor = true;
             // 
@@ -70,20 +76,20 @@
             // 
             this.saveButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.saveButton.DialogResult = System.Windows.Forms.DialogResult.OK;
-            this.saveButton.Location = new System.Drawing.Point(308, 319);
+            this.saveButton.Location = new System.Drawing.Point(308, 404);
             this.saveButton.Name = "saveButton";
             this.saveButton.Size = new System.Drawing.Size(75, 23);
-            this.saveButton.TabIndex = 8;
+            this.saveButton.TabIndex = 12;
             this.saveButton.Text = "Save";
             this.saveButton.UseVisualStyleBackColor = true;
             // 
             // testButton
             // 
             this.testButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.testButton.Location = new System.Drawing.Point(10, 319);
+            this.testButton.Location = new System.Drawing.Point(10, 404);
             this.testButton.Name = "testButton";
             this.testButton.Size = new System.Drawing.Size(75, 23);
-            this.testButton.TabIndex = 7;
+            this.testButton.TabIndex = 10;
             this.testButton.Text = "Test";
             this.testButton.UseVisualStyleBackColor = true;
             this.testButton.Click += new System.EventHandler(this.testButton_Click);
@@ -93,6 +99,12 @@
             this.panel1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+            this.panel1.Controls.Add(this.organization);
+            this.panel1.Controls.Add(this.organizationLabel);
+            this.panel1.Controls.Add(this.apiVersionCombo);
+            this.panel1.Controls.Add(this.apiVersionLabel);
+            this.panel1.Controls.Add(this.securityToken);
+            this.panel1.Controls.Add(this.tokenLabel);
             this.panel1.Controls.Add(this.useSsl);
             this.panel1.Controls.Add(this.port);
             this.panel1.Controls.Add(this.databaseInstructions);
@@ -112,16 +124,73 @@
             this.panel1.Controls.Add(this.nameLabel);
             this.panel1.Location = new System.Drawing.Point(12, 12);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(452, 293);
+            this.panel1.Size = new System.Drawing.Size(452, 380);
             this.panel1.TabIndex = 2;
+            // 
+            // apiVersionLabel
+            // 
+            this.apiVersionLabel.AutoSize = true;
+            this.apiVersionLabel.Location = new System.Drawing.Point(3, 121);
+            this.apiVersionLabel.Name = "apiVersionLabel";
+            this.apiVersionLabel.Size = new System.Drawing.Size(66, 13);
+            this.apiVersionLabel.TabIndex = 12;
+            this.apiVersionLabel.Text = "API Version:";
+            // 
+            // apiVersionCombo
+            // 
+            this.apiVersionCombo.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.apiVersionCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.apiVersionCombo.FormattingEnabled = true;
+            this.apiVersionCombo.Location = new System.Drawing.Point(76, 118);
+            this.apiVersionCombo.Name = "apiVersionCombo";
+            this.apiVersionCombo.Size = new System.Drawing.Size(373, 21);
+            this.apiVersionCombo.TabIndex = 3;
+            // 
+            // organizationLabel
+            // 
+            this.organizationLabel.AutoSize = true;
+            this.organizationLabel.Location = new System.Drawing.Point(3, 152);
+            this.organizationLabel.Name = "organizationLabel";
+            this.organizationLabel.Size = new System.Drawing.Size(69, 13);
+            this.organizationLabel.TabIndex = 13;
+            this.organizationLabel.Text = "Organization:";
+            // 
+            // organization
+            // 
+            this.organization.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.organization.Location = new System.Drawing.Point(76, 149);
+            this.organization.Name = "organization";
+            this.organization.Size = new System.Drawing.Size(373, 20);
+            this.organization.TabIndex = 4;
+            // 
+            // securityToken
+            // 
+            this.securityToken.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.securityToken.Location = new System.Drawing.Point(76, 312);
+            this.securityToken.Name = "securityToken";
+            this.securityToken.Size = new System.Drawing.Size(373, 20);
+            this.securityToken.TabIndex = 8;
+            this.securityToken.UseSystemPasswordChar = true;
+            // 
+            // tokenLabel
+            // 
+            this.tokenLabel.AutoSize = true;
+            this.tokenLabel.Location = new System.Drawing.Point(3, 315);
+            this.tokenLabel.Name = "tokenLabel";
+            this.tokenLabel.Size = new System.Drawing.Size(63, 13);
+            this.tokenLabel.TabIndex = 11;
+            this.tokenLabel.Text = "API Token:";
             // 
             // useSsl
             // 
             this.useSsl.AutoSize = true;
-            this.useSsl.Location = new System.Drawing.Point(76, 263);
+            this.useSsl.Location = new System.Drawing.Point(76, 348);
             this.useSsl.Name = "useSsl";
             this.useSsl.Size = new System.Drawing.Size(68, 17);
-            this.useSsl.TabIndex = 6;
+            this.useSsl.TabIndex = 9;
             this.useSsl.Text = "Use SSL";
             this.useSsl.UseVisualStyleBackColor = true;
             // 
@@ -130,7 +199,7 @@
             this.port.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.port.Location = new System.Drawing.Point(365, 61);
             this.port.Maximum = new decimal(new int[] {
-            65536,
+            65535,
             0,
             0,
             0});
@@ -152,12 +221,12 @@
             // 
             this.databaseInstructions.AutoSize = true;
             this.databaseInstructions.ForeColor = System.Drawing.SystemColors.ControlDarkDark;
-            this.databaseInstructions.Location = new System.Drawing.Point(73, 144);
+            this.databaseInstructions.Location = new System.Drawing.Point(73, 203);
             this.databaseInstructions.Name = "databaseInstructions";
             this.databaseInstructions.Size = new System.Drawing.Size(356, 26);
             this.databaseInstructions.TabIndex = 9;
-            this.databaseInstructions.Text = "Optionally specify the name of a single database to connect to.\r\nThis can be usef" +
-    "ul when you don\'t have admin privileges to list databases.";
+            this.databaseInstructions.Text = "Optionally specify a single Database / Bucket name to connect to.\r\nHelpful for v2" +
+    "/v3 or when admin permissions to list databases are missing.";
             // 
             // addressInstructions
             // 
@@ -193,29 +262,29 @@
             // 
             this.database.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.database.Location = new System.Drawing.Point(76, 121);
+            this.database.Location = new System.Drawing.Point(76, 180);
             this.database.Name = "database";
             this.database.Size = new System.Drawing.Size(373, 20);
-            this.database.TabIndex = 3;
+            this.database.TabIndex = 5;
             // 
             // password
             // 
             this.password.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.password.Location = new System.Drawing.Point(76, 227);
+            this.password.Location = new System.Drawing.Point(76, 278);
             this.password.Name = "password";
             this.password.Size = new System.Drawing.Size(373, 20);
-            this.password.TabIndex = 5;
+            this.password.TabIndex = 7;
             this.password.UseSystemPasswordChar = true;
             // 
             // username
             // 
             this.username.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.username.Location = new System.Drawing.Point(76, 187);
+            this.username.Location = new System.Drawing.Point(76, 244);
             this.username.Name = "username";
             this.username.Size = new System.Drawing.Size(373, 20);
-            this.username.TabIndex = 4;
+            this.username.TabIndex = 6;
             // 
             // name
             // 
@@ -250,7 +319,7 @@
             // securityLabel
             // 
             this.securityLabel.AutoSize = true;
-            this.securityLabel.Location = new System.Drawing.Point(3, 264);
+            this.securityLabel.Location = new System.Drawing.Point(3, 349);
             this.securityLabel.Name = "securityLabel";
             this.securityLabel.Size = new System.Drawing.Size(48, 13);
             this.securityLabel.TabIndex = 5;
@@ -259,7 +328,7 @@
             // databaseLabel
             // 
             this.databaseLabel.AutoSize = true;
-            this.databaseLabel.Location = new System.Drawing.Point(3, 124);
+            this.databaseLabel.Location = new System.Drawing.Point(3, 183);
             this.databaseLabel.Name = "databaseLabel";
             this.databaseLabel.Size = new System.Drawing.Size(56, 13);
             this.databaseLabel.TabIndex = 5;
@@ -268,7 +337,7 @@
             // passwordLabel
             // 
             this.passwordLabel.AutoSize = true;
-            this.passwordLabel.Location = new System.Drawing.Point(3, 230);
+            this.passwordLabel.Location = new System.Drawing.Point(3, 281);
             this.passwordLabel.Name = "passwordLabel";
             this.passwordLabel.Size = new System.Drawing.Size(56, 13);
             this.passwordLabel.TabIndex = 5;
@@ -277,7 +346,7 @@
             // usernameLabel
             // 
             this.usernameLabel.AutoSize = true;
-            this.usernameLabel.Location = new System.Drawing.Point(3, 190);
+            this.usernameLabel.Location = new System.Drawing.Point(3, 247);
             this.usernameLabel.Name = "usernameLabel";
             this.usernameLabel.Size = new System.Drawing.Size(63, 13);
             this.usernameLabel.TabIndex = 5;
@@ -295,10 +364,10 @@
             // pingButton
             // 
             this.pingButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.pingButton.Location = new System.Drawing.Point(91, 319);
+            this.pingButton.Location = new System.Drawing.Point(91, 404);
             this.pingButton.Name = "pingButton";
             this.pingButton.Size = new System.Drawing.Size(75, 23);
-            this.pingButton.TabIndex = 7;
+            this.pingButton.TabIndex = 11;
             this.pingButton.Text = "Ping";
             this.pingButton.UseVisualStyleBackColor = true;
             this.pingButton.Click += new System.EventHandler(this.pingButton_Click);
@@ -307,7 +376,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(476, 354);
+            this.ClientSize = new System.Drawing.Size(476, 439);
             this.Controls.Add(this.panel1);
             this.Controls.Add(this.pingButton);
             this.Controls.Add(this.testButton);
@@ -350,5 +419,11 @@
         private System.Windows.Forms.TextBox database;
         private System.Windows.Forms.Label databaseLabel;
         private System.Windows.Forms.Button pingButton;
+        private System.Windows.Forms.TextBox securityToken;
+        private System.Windows.Forms.Label tokenLabel;
+        private System.Windows.Forms.Label apiVersionLabel;
+        private System.Windows.Forms.ComboBox apiVersionCombo;
+        private System.Windows.Forms.Label organizationLabel;
+        private System.Windows.Forms.TextBox organization;
     }
 }

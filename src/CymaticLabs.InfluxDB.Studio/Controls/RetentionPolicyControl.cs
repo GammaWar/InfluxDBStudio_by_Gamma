@@ -21,6 +21,9 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
         // Used for creating new retention policies
         RetentionPolicyDialog policyDialog;
 
+        // Guards combo box selection change during programmatic binding
+        bool isPopulatingDatabases;
+
         #endregion Fields
 
         #region Properties
@@ -52,7 +55,7 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
         // Handles changes to the selected database
         private async void databaseComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if (databaseComboBox.Items.Count == 0 || databaseComboBox.SelectedItem == null) return;
+            if (isPopulatingDatabases || databaseComboBox.Items.Count == 0 || databaseComboBox.SelectedItem == null) return;
             SelectedDatabase = databaseComboBox.SelectedItem.ToString();
             await BindSelectedPolicy();
         }
@@ -119,6 +122,12 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(SelectedDatabase))
+                {
+                    AppForm.DisplayError("No database selected.");
+                    return;
+                }
+
                 // Clear out the dialog values
                 policyDialog.ResetPolicyValues();
 
@@ -297,25 +306,45 @@ namespace CymaticLabs.InfluxDB.Studio.Controls
                 foreach (var dbName in databaseNames) databaseComboBox.Items.Add(dbName);
             }
 
-            // Select default database
-            if (SelectedDatabase == null)
+            if (databaseComboBox.Items.Count == 0)
             {
-                databaseComboBox.SelectedIndex = 0;
-                SelectedDatabase = databaseComboBox.Items[databaseComboBox.SelectedIndex].ToString();
+                SelectedDatabase = null;
+                UpdateUIState();
+                return;
             }
-            else
-            {
-                for (var i = 0; i < databaseComboBox.Items.Count; i++)
-                {
-                    var database = databaseComboBox.Items[i].ToString();
 
-                    if (database == SelectedDatabase)
+            isPopulatingDatabases = true;
+            try
+            {
+                // Select default database
+                var matched = false;
+                if (!string.IsNullOrWhiteSpace(SelectedDatabase))
+                {
+                    for (var i = 0; i < databaseComboBox.Items.Count; i++)
                     {
-                        databaseComboBox.SelectedIndex = i;
-                        break;
+                        var database = databaseComboBox.Items[i].ToString();
+
+                        if (database == SelectedDatabase)
+                        {
+                            databaseComboBox.SelectedIndex = i;
+                            matched = true;
+                            break;
+                        }
                     }
                 }
+
+                if (!matched)
+                {
+                    databaseComboBox.SelectedIndex = 0;
+                    SelectedDatabase = databaseComboBox.Items[0].ToString();
+                }
             }
+            finally
+            {
+                isPopulatingDatabases = false;
+            }
+
+            await BindSelectedPolicy();
         }
 
         // Binds retention policies for the current database
